@@ -1,0 +1,7 @@
+REFRESH MATERIALIZED VIEW gold_pib_tendencia;
+REFRESH MATERIALIZED VIEW gold_empleo_tendencia;
+REFRESH MATERIALIZED VIEW gold_petroleo_30dias;
+REFRESH MATERIALIZED VIEW gold_empresas_provincia;
+REFRESH MATERIALIZED VIEW gold_bachilleres_vs_empresas;
+REFRESH MATERIALIZED VIEW gold_vab_sector_provincia;
+REFRESH MATERIALIZED VIEW gold_iee_coyuntura;
