@@ -1,343 +1,134 @@
-# Pipeline de datos del macroentorno ecuatoriano — Reto final 6to ciclo
+# Pipeline de Datos del Macroentorno Económico del Ecuador
 
-Repositorio base para el **segundo entregable** del reto final de Datos: **módulos ETL, DDL SQL y README**.
+## Descripción
 
-El proyecto implementa la arquitectura medallón definida en el primer entregable: **Bronze → ETL → Silver → Gold → Power BI**. Está enfocado únicamente en **6to ciclo**, por lo que usa **PostgreSQL**, contempla los **tres bloques completos de fuentes**, incluye **mínimo doce tablas Silver**, usa **vistas materializadas Gold** y deja preparado el mecanismo de detección de archivos nuevos provenientes del equipo de RPA.
+Este repositorio contiene los componentes desarrollados para el segundo entregable del reto final de la asignatura de Datos correspondiente al sexto ciclo.
 
----
+El objetivo del proyecto es recopilar, transformar y almacenar información proveniente de diferentes instituciones públicas del Ecuador para su posterior análisis mediante dashboards en Power BI.
 
-## 1. Alcance del reto de 6to ciclo
-
-Según el documento del reto final, el nivel de 6to ciclo debe trabajar con:
-
-- **Base de datos:** PostgreSQL.
-- **Fuentes:** los tres bloques completos: BCE, INEC, Supercias y MINEDUC.
-- **Tablas Silver:** mínimo doce tablas.
-- **Vistas Gold:** las cuatro vistas base más dos vistas adicionales propuestas y justificadas.
-- **Dashboard:** tres páginas con KPIs, visualizaciones y análisis ejecutivo por página.
-- **Integración RPA:** detección de archivos nuevos en la carpeta definida para RPA.
+La solución se implementa utilizando PostgreSQL como base de datos principal y una arquitectura de procesamiento por capas que permite organizar y preparar los datos para la generación de indicadores y visualizaciones.
 
 ---
 
-## 2. Estructura del repositorio
+## Alcance del proyecto
+
+Para este entregable se trabajó con información proveniente de:
+
+* Banco Central del Ecuador (BCE)
+* Instituto Nacional de Estadística y Censos (INEC)
+* Superintendencia de Compañías (SUPERCIAS)
+* Ministerio de Educación (MINEDUC)
+
+Los datos obtenidos son procesados mediante módulos ETL y almacenados en tablas diseñadas para análisis y generación de reportes.
+
+---
+
+## Estructura general
 
 ```text
 reto_final_6to_ciclo/
+│
 ├── data/
-│   ├── bronze/
-│   │   ├── manual/          # Archivos descargados manualmente semanas 1-4
-│   │   └── rpa/             # Archivos depositados por RPA semanas 5-7
-│   └── silver_exports/      # Exportaciones opcionales de control
 ├── docs/
-│   ├── arquitectura_entregable_1.png
-│   ├── RETO_FINAL_DATOS.pdf
-│   ├── decisiones_limpieza.md
-│   └── estructura_archivos_fuente.md
 ├── etl/
-│   ├── config.py
-│   ├── db.py
-│   ├── load.py
-│   ├── pipeline.py
-│   ├── rpa_watch.py
-│   ├── transform/
-│   │   ├── bce.py
-│   │   ├── inec.py
-│   │   ├── supercias.py
-│   │   └── mineduc.py
-│   └── utils/
-│       ├── cleaning.py
-│       └── io.py
 ├── sql/
-│   ├── 01_create_database.sql
-│   ├── 02_create_roles.sql
-│   ├── 03_create_tables.sql
-│   ├── 04_gold_views.sql
-│   └── 05_refresh_gold_views.sql
 ├── requirements.txt
 ├── .env.example
-├── .gitignore
 └── README.md
 ```
 
----
+### Carpetas principales
 
-## 3. Fuentes contempladas
+#### data/
 
-| Bloque | Fuente | Módulo ETL | Tabla Silver principal |
-|---|---|---|---|
-| BCE | PIB real anual | `etl/transform/bce.py` | `fact_macro_anual` |
-| BCE | PIB per cápita nominal | `etl/transform/bce.py` | `fact_macro_anual` |
-| BCE | VAB por provincia e industria | `etl/transform/bce.py` | `fact_vab_prov_ind` |
-| BCE | Precio petróleo y riesgo país | `etl/transform/bce.py` | `fact_indicadores_diarios` |
-| BCE | IEE Expectativas Empresariales | `etl/transform/bce.py` | `fact_iee` |
-| INEC | ENEMDU indicadores laborales | `etl/transform/inec.py` | `fact_empleo` |
-| INEC | Censo 2022 rama de actividad | `etl/transform/inec.py` | `fact_censo_actividad` |
-| Supercias | Ranking de empresas | `etl/transform/supercias.py` | `fact_supercias_ranking` |
-| Supercias | Directorio de compañías | `etl/transform/supercias.py` | `fact_supercias_directorio` |
-| MINEDUC | AMIE 2023-2024 | `etl/transform/mineduc.py` | `fact_mineduc_amie` |
+Contiene los archivos de entrada utilizados durante el proceso ETL.
 
-Además, el modelo incluye `dim_geografia`, `dim_tiempo` y `file_processing_log` para normalización y control del reprocesamiento.
+#### docs/
 
----
+Incluye la documentación del proyecto y la arquitectura propuesta en el primer entregable.
 
-## 4. Modelo Silver implementado
+#### etl/
 
-El script `sql/03_create_tables.sql` crea las siguientes tablas:
+Contiene los scripts encargados de la extracción, transformación y carga de datos.
 
-1. `dim_geografia`
-2. `dim_tiempo`
-3. `fact_macro_anual`
-4. `fact_indicadores_diarios`
-5. `fact_iee`
-6. `fact_vab_prov_ind`
-7. `fact_empleo`
-8. `fact_censo_actividad`
-9. `fact_supercias_ranking`
-10. `fact_supercias_directorio`
-11. `fact_mineduc_amie`
-12. `file_processing_log`
+#### sql/
 
-Con esto se cumple el requisito de 6to ciclo de trabajar con **mínimo doce tablas Silver**.
+Almacena los scripts necesarios para la creación de la base de datos, tablas y vistas utilizadas en el proyecto.
 
 ---
 
-## 5. Vistas Gold implementadas
+## Fuentes de información
 
-El script `sql/04_gold_views.sql` crea vistas materializadas para análisis y conexión con Power BI:
+Las principales fuentes utilizadas son:
 
-| Vista Gold | Propósito | Pregunta del dashboard |
-|---|---|---|
-| `gold_pib_tendencia` | Evolución del PIB y clasificación del ciclo económico | P1 |
-| `gold_empleo_tendencia` | Tendencia histórica de desempleo | P2 |
-| `gold_petroleo_30dias` | Promedio móvil de 30 días del WTI | P1 / contexto macro |
-| `gold_empresas_provincia` | Empresas activas e ingresos por provincia | P3 |
-| `gold_bachilleres_vs_empresas` | Cruce de bachilleres y empresas activas por provincia | P3 |
-| `gold_vab_sector_provincia` | Vista adicional 6to ciclo: VAB por sector y provincia | P2 |
-| `gold_iee_coyuntura` | Vista adicional 6to ciclo: expectativas empresariales recientes | P1 |
+### Banco Central del Ecuador
 
-Las dos vistas adicionales propuestas para 6to ciclo son:
+* PIB real anual
+* PIB per cápita
+* Valor Agregado Bruto por provincia
+* Precio del petróleo
+* Riesgo país
+* Índice de Expectativas Empresariales
 
-- `gold_vab_sector_provincia`: permite analizar concentración económica por provincia y sector CIIU.
-- `gold_iee_coyuntura`: agrega contexto mensual de expectativas empresariales para interpretar el ciclo económico.
+### INEC
 
----
+* Indicadores de empleo y desempleo (ENEMDU)
+* Información del Censo 2022
 
-## 6. Instalación del entorno
+### SUPERCIAS
 
-### 6.1 Crear entorno virtual
+* Ranking de empresas
+* Directorio de compañías
 
-```bash
-python -m venv .venv
-```
+### MINEDUC
 
-Activar en Windows:
-
-```bash
-.venv\Scripts\activate
-```
-
-Activar en Linux/Mac:
-
-```bash
-source .venv/bin/activate
-```
-
-### 6.2 Instalar dependencias
-
-```bash
-pip install -r requirements.txt
-```
-
-### 6.3 Configurar variables de entorno
-
-Copiar `.env.example` como `.env`:
-
-```bash
-copy .env.example .env
-```
-
-En Linux/Mac:
-
-```bash
-cp .env.example .env
-```
-
-Editar `.env` con los datos reales de PostgreSQL.
+* Información estadística AMIE
 
 ---
 
-## 7. Preparar PostgreSQL
+## Base de datos
 
-### 7.1 Crear base de datos
+El proyecto utiliza PostgreSQL como sistema gestor de bases de datos.
 
-Entrar a PostgreSQL con un usuario administrador y ejecutar:
+El modelo implementado incluye tablas de dimensiones y tablas de hechos que permiten organizar la información de forma adecuada para análisis posteriores.
 
-```sql
-\i sql/01_create_database.sql
-```
+Entre las principales estructuras se encuentran:
 
-Luego conectarse a la base:
-
-```sql
-\c macroentorno_ecuador
-```
-
-### 7.2 Crear roles
-
-```sql
-\i sql/02_create_roles.sql
-```
-
-### 7.3 Crear tablas Silver y vistas Gold
-
-```sql
-\i sql/03_create_tables.sql
-\i sql/04_gold_views.sql
-```
+* Dimensión de tiempo
+* Dimensión geográfica
+* Información macroeconómica
+* Indicadores laborales
+* Información empresarial
+* Datos educativos
+* Registro de archivos procesados
 
 ---
 
-## 8. Ubicación de archivos Bronze
+## Ejecución del proceso ETL
 
-Durante semanas 1 a 4, colocar archivos descargados manualmente en:
-
-```text
-data/bronze/manual/
-```
-
-Desde semana 5, el equipo de RPA debe depositar archivos en:
-
-```text
-data/bronze/rpa/
-```
-
-El formato recomendado es:
-
-```text
-fuente_YYYYMMDD.ext
-```
-
-Ejemplos:
-
-```text
-pib_real_20260512.xlsx
-pib_nominal_20260512.xlsx
-vab_20260512.xlsx
-petroleo_riesgo_20260512.xlsx
-iee_20260512.xlsx
-enemdu_20260512.xlsx
-censo_actividad_20260512.xlsx
-supercias_ranking_20260512.csv
-supercias_directorio_20260512.csv
-mineduc_amie_20260512.csv
-```
-
----
-
-## 9. Ejecutar el pipeline ETL
-
-Desde la raíz del repositorio:
+Una vez configurada la conexión con PostgreSQL e instaladas las dependencias del proyecto, el proceso principal puede ejecutarse mediante:
 
 ```bash
 python -m etl.pipeline
 ```
 
-Este comando realiza lo siguiente:
+Este procedimiento realiza:
 
-1. Busca archivos `.csv`, `.xlsx` y `.xls` en las carpetas Bronze.
-2. Detecta la fuente según el nombre del archivo.
-3. Aplica limpieza y normalización.
-4. Carga dimensiones y tablas de hechos Silver.
-5. Registra cada archivo procesado en `file_processing_log`.
-6. Refresca las vistas materializadas Gold.
-
----
-
-## 10. Ejecutar detección automática de RPA
-
-Para dejar el pipeline escuchando archivos nuevos del equipo de RPA:
-
-```bash
-python -m etl.rpa_watch
-```
-
-Cuando RPA copie un archivo nuevo en `data/bronze/rpa/`, el pipeline lo procesa automáticamente y refresca las vistas Gold.
+1. Lectura de archivos de entrada.
+2. Limpieza y validación de datos.
+3. Transformación de la información.
+4. Carga en PostgreSQL.
+5. Actualización de estructuras utilizadas para análisis.
 
 ---
 
-## 11. Conexión con Power BI
+## Integración con Power BI
 
-En Power BI:
+Los datos procesados son consumidos desde Power BI mediante conexión directa a PostgreSQL.
 
-1. Seleccionar **Obtener datos**.
-2. Elegir **PostgreSQL database**.
-3. Ingresar servidor, base de datos y usuario de lectura.
-4. Conectar principalmente a las vistas Gold:
-   - `gold_pib_tendencia`
-   - `gold_empleo_tendencia`
-   - `gold_petroleo_30dias`
-   - `gold_empresas_provincia`
-   - `gold_bachilleres_vs_empresas`
-   - `gold_vab_sector_provincia`
-   - `gold_iee_coyuntura`
+A partir de esta información se desarrollan dashboards orientados al análisis de:
 
----
-
-## 12. Páginas sugeridas del dashboard
-
-### Página P1 — Evolución económica
-
-Usar:
-
-- `gold_pib_tendencia`
-- `gold_petroleo_30dias`
-- `gold_iee_coyuntura`
-
-Visualizaciones:
-
-- Línea de PIB real anual.
-- Barras de variación del PIB por clasificación.
-- KPI de último PIB per cápita nominal.
-- Línea de IEE mensual como contexto.
-
-### Página P2 — Actividad económica y empleo
-
-Usar:
-
-- `gold_empleo_tendencia`
-- `gold_vab_sector_provincia`
-- `fact_censo_actividad` si se desea análisis más detallado por CIIU.
-
-Visualizaciones:
-
-- Mapa de VAB por provincia.
-- Top 10 sectores CIIU.
-- KPI de tasa de desempleo más reciente.
-
-### Página P3 — Bachilleres vs empresas
-
-Usar:
-
-- `gold_bachilleres_vs_empresas`
-- `gold_empresas_provincia`
-
-Visualizaciones:
-
-- Barras agrupadas: bachilleres vs empresas activas.
-- Tabla de ratio bachilleres por empresa.
-- KPI de total nacional de bachilleres.
-
----
-
-## 13. Estado del entregable
-
-Este repositorio cubre el **segundo entregable**:
-
-- Módulos ETL por fuente.
-- DDL SQL de PostgreSQL.
-- Vistas Gold materializadas.
-- README con instalación, ejecución, carpetas y conexión con Power BI.
-- Carpeta para integración RPA.
-- Documentación de limpieza y estructura esperada de archivos.
-
-Los archivos reales de las fuentes no se incluyen en el repositorio porque deben ser descargados o recibidos desde RPA.
+* Evolución económica.
+* Mercado laboral.
+* Relación entre educación y actividad empresarial.
+* Indicadores del entorno productivo nacional.
